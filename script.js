@@ -628,10 +628,12 @@ function updateProgressUI() {
 }
 
 async function processQueue() {
-    if (isAnalyzing || analysisQueue.length === 0) {
-        if (analysisQueue.length === 0 && autoAnalysisEnabled) {
+    log(`[Queue] processQueue called. Queue: ${analysisQueue.length}, Active: ${activeWorkers}/${MAX_CONCURRENT}`);
+
+    // If queue is empty
+    if (analysisQueue.length === 0) {
+        if (activeWorkers === 0 && autoAnalysisEnabled) {
             const btn = document.getElementById('auto-analyze-btn');
-            // Use allGames.length for total
             const total = Math.max(totalToAnalyze, allGames.length);
             if (btn && processedCount >= total && document.getElementById('fetch-status').textContent === '') {
                 btn.textContent = `Done! (${processedCount} games analyzed)`;
@@ -642,29 +644,45 @@ async function processQueue() {
         return;
     }
 
-    isAnalyzing = true;
+    if (activeWorkers >= MAX_CONCURRENT) {
+        log(`[Queue] Workers full. Waiting.`);
+        return;
+    }
+
+    activeWorkers++;
     const task = analysisQueue.shift();
     updateProgressUI();
 
+    log(`[Queue] Starting task: ${task.uniqueId}`);
+
+    // Non-blocking processing 
+    runTask(task).finally(() => {
+        log(`[Queue] Task finished: ${task.uniqueId}. Worker freed.`);
+        activeWorkers--;
+        processedCount++;
+        updateProgressUI();
+        processQueue();
+    });
+
+    // Start another immediately
+    setTimeout(processQueue, 50);
+}
+
+async function runTask(task) {
     try {
-        // Run analysis with a 60s timeout to prevent hangs
+        log(`[Runner] runTask executing for ${task.uniqueId}`);
         await Promise.race([
             analyzeGame(task.game, task.btnId, task.resId, task.isPlayerWhite, task.uniqueId),
-            new Promise((_, reject) => setTimeout(() => reject(new Error("Analysis Timeout")), 60000))
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Game Timeout")), 90000))
         ]);
-        processedCount++;
+        log(`[Runner] runTask completed for ${task.uniqueId}`);
     } catch (e) {
-        console.error("Queue processing error for game:", task.uniqueId, e);
+        console.error("Task failed:", e);
+        log(`[Runner] Task FAILED for ${task.uniqueId}: ${e.message}`);
         if (task.btnId) {
             const btn = document.getElementById(task.btnId);
             if (btn) btn.textContent = 'Failed';
         }
-        processedCount++;
-    } finally {
-        updateProgressUI();
-        isAnalyzing = false;
-        // Faster iteration
-        setTimeout(processQueue, 100);
     }
 }
 

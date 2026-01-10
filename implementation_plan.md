@@ -10,12 +10,13 @@ None. Uses public API.
 
 ### `script.js`
 - **Fix:** Fetch full country name from the country URL provided in the profile.
-- **Feat:** Implement `fetchGameHistory(username)` function.
-    - Fetch list of archives: `https://api.chess.com/pub/player/{username}/games/archives`
-    - Fetch the *latest* monthly archive from the list.
-    - Store all games in a `allGames` variable.
-    - Implement `renderPage(pageNumber)` to show 10 games at a time.
-    - Add "Previous" and "Next" button event listeners.
+- **Feat:** Update `fetchGameHistory(username)`:
+    - Fetch list of archives.
+    - Loop through *all* archives (using `Promise.all` for parallel fetching).
+    - Flatten the results into a single `allGames` array.
+    - Sort by end_time (descending).
+    - Update `renderPage` to handle the larger dataset.
+    - Add a loading indicator showing "Loading X games..."
 
 ### `index.html`
 - Add a `#games-history` section below the stats grid.

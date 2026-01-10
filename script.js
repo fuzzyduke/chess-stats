@@ -61,9 +61,12 @@ async function fetchStats(username) {
     }
 }
 
+const BATCH_SIZE = 5; // Simultanous requests
+const GAMES_LIMIT = 5000; // Hard limit for safety
+
 async function fetchGameHistory(username) {
     try {
-        gamesList.innerHTML = '<div style="color:#888; text-align:center">Loading history...</div>';
+        gamesList.innerHTML = '<div style="color:#888; text-align:center">Fetching archives list...</div>';
 
         // Get Archives
         const archivesRes = await fetch(`https://api.chess.com/pub/player/${username}/games/archives`);
@@ -74,20 +77,56 @@ async function fetchGameHistory(username) {
             return;
         }
 
-        // Get Latest Monthly Archive
-        const latestArchiveUrl = archivesData.archives[archivesData.archives.length - 1];
-        const gamesRes = await fetch(latestArchiveUrl);
-        const gamesData = await gamesRes.json();
+        const archiveUrls = archivesData.archives.reverse(); // Newest first
+        gamesList.innerHTML = `<div style="color:#888; text-align:center">Found ${archiveUrls.length} monthly archives. Loading...</div>`;
 
-        // Store all games (reversed = newest first)
-        allGames = gamesData.games.reverse();
+        // Batch Fetch Logic
+        allGames = [];
+        let completed = 0;
+
+        // Process in batches
+        for (let i = 0; i < archiveUrls.length; i += BATCH_SIZE) {
+            const batch = archiveUrls.slice(i, i + BATCH_SIZE);
+
+            // Update Loading Status
+            gamesList.innerHTML = `<div style="color:#888; text-align:center">Loading history... (${completed}/${archiveUrls.length} months)</div>`;
+
+            const batchPromises = batch.map(url => fetch(url).then(res => res.json()).catch(err => {
+                console.warn(`Failed to fetch ${url}`, err);
+                return { games: [] };
+            }));
+
+            const batchResults = await Promise.all(batchPromises);
+
+            batchResults.forEach(data => {
+                if (data.games) {
+                    // Combine and flatten
+                    // Sort descending within the month
+                    data.games.reverse();
+                    allGames.push(...data.games);
+                }
+            });
+
+            completed += batch.length;
+
+            // Safety break
+            if (allGames.length > GAMES_LIMIT) {
+                console.warn('Game limit reached');
+                break;
+            }
+        }
+
+        // Final Sort (just to be sure)
+        // allGames.sort((a, b) => b.end_time - a.end_time);
+
+        gamesList.innerHTML = ''; // Clear loading
 
         if (allGames.length > 0) {
             renderPage(1);
             updatePaginationControls();
             paginationControls.classList.remove('hidden');
         } else {
-            gamesList.innerHTML = '<div style="text-align:center">No games in this archive.</div>';
+            gamesList.innerHTML = '<div style="text-align:center">No games found.</div>';
         }
 
     } catch (e) {

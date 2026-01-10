@@ -467,8 +467,25 @@ async function analyzeGame(game, btnId, resId, isPlayerWhite, uniqueId) {
 
             log(`[${uId}] Starting engine analysis...`);
 
+            let currentDepthScore = 0;
+            let moveTimeout = null;
+
+            // Watchdog for individual moves
+            const resetMoveTimeout = () => {
+                if (moveTimeout) clearTimeout(moveTimeout);
+                // If a single move takes > 5 seconds, skip it (assume stuck/crash)
+                moveTimeout = setTimeout(() => {
+                    log(`[${uId}] Move ${moveIndex} timed out. Skipping.`);
+                    moveIndex++;
+                    analyzeNextMove();
+                }, 5000);
+            };
+
             const analyzeNextMove = () => {
+                resetMoveTimeout(); // ARMED for this move
+
                 if (moveIndex >= history.length) {
+                    if (moveTimeout) clearTimeout(moveTimeout); // Clear final
                     log(`[${uId}] Finishing: ${blunders} blunders found.`);
                     engine.terminate();
 

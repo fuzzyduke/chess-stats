@@ -528,8 +528,6 @@ async function analyzeGame(game, btnId, resId, isPlayerWhite, uniqueId) {
                 engine.postMessage('go depth 10');
             };
 
-            let currentDepthScore = 0;
-
             engine.onmessage = (event) => {
                 const line = event.data;
 

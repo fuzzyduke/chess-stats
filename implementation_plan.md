@@ -13,17 +13,19 @@ None. Uses public API.
 - **Feat:** Implement `fetchGameHistory(username)` function.
     - Fetch list of archives: `https://api.chess.com/pub/player/{username}/games/archives`
     - Fetch the *latest* monthly archive from the list.
-    - Display the last 10-20 games from that month.
-    - (Future) Add "Load More" to fetch previous months.
+    - Store all games in a `allGames` variable.
+    - Implement `renderPage(pageNumber)` to show 10 games at a time.
+    - Add "Previous" and "Next" button event listeners.
 
 ### `index.html`
 - Add a `#games-history` section below the stats grid.
 - Add a "Recent Games" header.
-- Create a list/table structure for games (White vs Black, Result, Date).
+- Add a pagination container with `<button id="prev-btn">`, `<span id="page-indicator">`, and `<button id="next-btn">`.
 
 ### `styles.css`
 - Style the games list (cards or table).
 - Win/Loss color coding (Green/Red).
+- Style pagination buttons (primary color, disabled state).
 
 ## Verification Plan
 ### Manual Verification

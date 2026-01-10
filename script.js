@@ -12,8 +12,24 @@ document.getElementById('search-btn').addEventListener('click', () => {
 const resultsContainer = document.getElementById('results');
 const errorDiv = document.getElementById('error');
 const gamesList = document.getElementById('games-list');
+const paginationControls = document.getElementById('pagination-controls');
+const prevBtn = document.getElementById('prev-btn');
+const nextBtn = document.getElementById('next-btn');
+const pageIndicator = document.getElementById('page-indicator');
+
+// Application State
+let allGames = [];
+let currentPage = 1;
+const GAMES_PER_PAGE = 10;
+let currentUsername = '';
 
 async function fetchStats(username) {
+    // Reset state
+    allGames = [];
+    currentPage = 1;
+    currentUsername = username;
+    paginationControls.classList.add('hidden');
+
     try {
         // Fetch Profile Data
         const profileRes = await fetch(`https://api.chess.com/pub/player/${username}`);
@@ -63,15 +79,51 @@ async function fetchGameHistory(username) {
         const gamesRes = await fetch(latestArchiveUrl);
         const gamesData = await gamesRes.json();
 
-        // Display last 10 games (reversed)
-        const recentGames = gamesData.games.slice(-10).reverse();
-        displayGames(recentGames, username);
+        // Store all games (reversed = newest first)
+        allGames = gamesData.games.reverse();
+
+        if (allGames.length > 0) {
+            renderPage(1);
+            updatePaginationControls();
+            paginationControls.classList.remove('hidden');
+        } else {
+            gamesList.innerHTML = '<div style="text-align:center">No games in this archive.</div>';
+        }
 
     } catch (e) {
         console.error(e);
         gamesList.innerHTML = '<div style="color:#ff6b6b; text-align:center">Failed to load games.</div>';
     }
 }
+
+function renderPage(page) {
+    currentPage = page;
+    const startIndex = (page - 1) * GAMES_PER_PAGE;
+    const endIndex = startIndex + GAMES_PER_PAGE;
+    const gamesToDisplay = allGames.slice(startIndex, endIndex);
+
+    displayGames(gamesToDisplay, currentUsername);
+    updatePaginationControls();
+}
+
+function updatePaginationControls() {
+    const totalPages = Math.ceil(allGames.length / GAMES_PER_PAGE);
+
+    pageIndicator.textContent = `Page ${currentPage} of ${totalPages || 1}`;
+
+    prevBtn.disabled = currentPage === 1;
+    nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+}
+
+// Event Listeners for Pagination
+prevBtn.addEventListener('click', () => {
+    if (currentPage > 1) renderPage(currentPage - 1);
+});
+
+nextBtn.addEventListener('click', () => {
+    const totalPages = Math.ceil(allGames.length / GAMES_PER_PAGE);
+    if (currentPage < totalPages) renderPage(currentPage + 1);
+});
 
 function displayData(profile, stats, countryName) {
     // Profile

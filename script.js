@@ -1,9 +1,14 @@
 // Debug Logger
 function log(msg) {
-    const logs = document.getElementById('debug-logs');
-    const time = new Date().toLocaleTimeString();
-    logs.innerHTML += `[${time}] ${msg}\n`;
-    logs.scrollTop = logs.scrollHeight;
+    const logs = document.getElementById('debug-content');
+    if (logs) {
+        const time = new Date().toLocaleTimeString();
+        const line = document.createElement('div');
+        line.textContent = `[${time}] ${msg}`;
+        line.style.borderBottom = '1px solid #222';
+        logs.appendChild(line);
+        logs.scrollTop = logs.scrollHeight;
+    }
     console.log(msg);
 }
 
@@ -458,13 +463,15 @@ async function analyzeGame(game, btnId, resId, isPlayerWhite, uniqueId) {
             const uId = uniqueId || btnId;
             gameBlunders[uId] = [];
 
+            log(`[${uId}] Starting engine analysis...`);
+
             const analyzeNextMove = () => {
                 if (moveIndex >= history.length) {
+                    log(`[${uId}] Finishing: ${blunders} blunders found.`);
                     engine.terminate();
 
                     // Save to Storage
                     storage.save(game.url, gameBlunders[uId])
-                        .then(() => log('Analysis saved to DB'))
                         .catch(e => console.error('Save failed', e));
 
                     if (btn) btn.style.display = 'none';
@@ -481,6 +488,9 @@ async function analyzeGame(game, btnId, resId, isPlayerWhite, uniqueId) {
                     resolve();
                     return;
                 }
+
+                if (moveIndex % 5 === 0) log(`[${uId}] Processing move ${moveIndex}/${history.length}`);
+
 
                 const tempChess = new Chess();
                 for (let i = 0; i <= moveIndex; i++) {

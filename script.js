@@ -223,6 +223,17 @@ async function fetchGameHistory(username) {
             const batchResults = await Promise.all(batchPromises);
 
             batchResults.forEach(data => {
+                if (autoAnalysisEnabled) {
+                    // Auto-queue new games immediately!
+                    data.games.forEach(g => {
+                        // Check cache first (optimization to avoid queue spam)
+                        // Actually, queue logic checks cache too, but async.
+                        // Let's fire and forget.
+                        const pWhite = g.white.username.toLowerCase() === username.toLowerCase();
+                        addToAnalysisQueue(g, null, null, pWhite, g.url);
+                    });
+                }
+
                 if (data.games) {
                     data.games.reverse();
                     allGames.push(...data.games);
@@ -326,7 +337,7 @@ function displayGames(games, username) {
                 <div class="game-date">${date}</div>
                 <div>
                     <a href="${game.url}" target="_blank" class="game-link">View Game</a>
-                    <button id="btn-${uniqueId}" class="analyze-btn">Analyze</button>
+                    <button id="btn-${uniqueId}" data-game-url="${game.url}" class="analyze-btn">Analyze</button>
                     <span id="res-${uniqueId}" class="blunder-badge hidden"></span>
                 </div>
             </div>

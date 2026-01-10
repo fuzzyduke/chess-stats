@@ -22,7 +22,37 @@
             </div>
 
             <div id="results" class="results-container hidden">
-                <!-- Results will be injected here -->
+                <div class="profile-card">
+                    <img id="avatar" src="" alt="Avatar" class="avatar">
+                    <div class="profile-info">
+                        <h2 id="player-name"></h2>
+                        <span id="player-status" class="status-badge"></span>
+                        <p id="player-location" class="location"></p>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Rapid</h3>
+                        <div id="rapid-rating" class="rating">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Blitz</h3>
+                        <div id="blitz-rating" class="rating">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Bullet</h3>
+                        <div id="bullet-rating" class="rating">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Daily</h3>
+                        <div id="daily-rating" class="rating">--</div>
+                    </div>
+                </div>
+
+                <div class="raw-link">
+                    <a id="profile-link" href="#" target="_blank">View on Chess.com</a>
+                </div>
             </div>
 
             <div id="error" class="error-message hidden"></div>

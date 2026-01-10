@@ -79,6 +79,8 @@ let board = null;
 let analysisQueue = [];
 let autoAnalysisEnabled = false;
 // isAnalyzing replaced by activeWorkers logic in processQueue
+const MAX_CONCURRENT = 3;
+let activeWorkers = 0;
 
 // Initialize Board (Hidden initially)
 $(document).ready(function () {

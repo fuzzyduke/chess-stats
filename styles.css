@@ -221,32 +221,154 @@ button:hover {
 }
 
 /* Pagination */
-.pagination-controls {
+#pagination-controls {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 15px;
-    margin-top: 20px;
+    gap: 1rem;
+    padding: 1rem;
+    margin-top: 1rem;
 }
 
-.pagination-controls button {
-    padding: 8px 16px;
+#pagination-controls button {
+    padding: 0.5rem 1rem;
     background-color: var(--primary-color);
-    color: white;
+    color: var(--bg-color);
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    opacity: 1;
-    transition: opacity 0.2s;
 }
 
-.pagination-controls button:disabled {
-    background-color: #555;
+#pagination-controls button:disabled {
+    background-color: var(--surface-color);
     cursor: not-allowed;
     opacity: 0.7;
 }
 
-.pagination-controls span {
-    color: #ccc;
+#page-indicator {
+    color: var(--text-secondary);
+}
+
+/* Analysis Styles */
+.analyze-btn {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
     font-size: 0.9rem;
+    margin-left: 10px;
+}
+
+.analyze-btn:hover {
+    opacity: 0.9;
+}
+
+.analyze-btn:disabled {
+    background-color: var(--surface-color);
+    cursor: wait;
+}
+
+.blunder-badge {
+    background-color: #ff4b4b;
+    /* Red for blunders */
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    margin-left: 10px;
+    display: inline-block;
+}
+
+/* Debug Console */
+.debug-console {
+    background: #000;
+    color: #0f0;
+    font-family: monospace;
+    padding: 10px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    border: 1px solid #333;
+    font-size: 0.8rem;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+#debug-logs {
+    color: #ccc;
+    white-space: pre-wrap;
+}
+
+/* Sidebar */
+.sidebar {
+    position: fixed;
+    top: 0;
+    right: -400px;
+    /* Hidden by default */
+    width: 350px;
+    height: 100%;
+    background: #1e1e1e;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5);
+    transition: right 0.3s ease-in-out;
+    padding: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar.open {
+    right: 0;
+}
+
+.close-btn {
+    align-self: flex-end;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 2rem;
+    cursor: pointer;
+}
+
+.sidebar-content h2 {
+    color: #a3ca5c;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+#myBoard {
+    margin: 0 auto;
+    margin-bottom: 20px;
+}
+
+.blunder-info {
+    text-align: center;
+    color: #ccc;
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+.board-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.board-controls button {
+    padding: 8px 16px;
+    background: #444;
+    border: none;
+    color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.board-controls button:hover {
+    background: #555;
+}
+
+.eval-diff {
+    color: #ff6b6b;
+    font-weight: bold;
 }

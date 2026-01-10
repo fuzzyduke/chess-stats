@@ -10,13 +10,23 @@ None. Uses public API.
 
 ### `script.js`
 - **Fix:** Fetch full country name from the country URL provided in the profile.
-- **Feat:** Update `fetchGameHistory(username)`:
-    - Fetch list of archives.
-    - Loop through *all* archives (using `Promise.all` for parallel fetching).
-    - Flatten the results into a single `allGames` array.
-    - Sort by end_time (descending).
-    - Update `renderPage` to handle the larger dataset.
-    - Add a loading indicator showing "Loading X games..."
+- **Feat:** Update `fetchGameHistory(username)` (Full History + Batch).
+- **Feat:** Integrate **Stockfish.js** & **Chess.js** for client-side analysis.
+    - Load `chess.js` (via CDN) for PGN parsing.
+    - Load `stockfish.js` (locally served) for the engine.
+    - Implement `analyzeGame(gameIndex, btnElement)`:
+        - Triggered by "Analyze" button click.
+        - Parse PGN, run Stockfish on moves.
+        - Detect Blunders (Evaluation swing > 200cp).
+        - Update the specific game card with blunder count.
+
+### `index.html`
+- Import `chess.js` (CDN).
+- Do NOT import `stockfish.js` via script tag (loaded dynamically as Worker).
+
+### `styles.css`
+- Add styles for `.analyze-btn` (standard button).
+- Add styles for `.blunder-tag` (result badge).
 
 ### `index.html`
 - Add a `#games-history` section below the stats grid.

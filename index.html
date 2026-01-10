@@ -6,6 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chess Stats Viewer</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- Chessboard.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"
+        integrity="sha384-q94+BZtLrkL1/ohfjR8c6L+A6qzNH9R2hBLwyoAfu3i/WCvQjzL2RQJ3uNHDISdU" crossorigin="anonymous">
+    <!-- jQuery (required for Chessboard.js) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"
+        integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2"
+        crossorigin="anonymous"></script>
+    <!-- Chessboard.js JS -->
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"
+        integrity="sha384-8Vi8VHwn3vjQ9eUHUxex3JSN/NFqUg3QbPyX8kWyb93+8AC/pPWTzj+nHtbC5bxD"
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 </head>
 
 <body>
@@ -17,8 +29,14 @@
 
         <main>
             <div class="search-box">
-                <input type="text" id="username" placeholder="Enter Chess.com username">
+                <input type="text" id="username" placeholder="Enter Chess.com username" value="eg0maniac">
                 <button id="search-btn">Search</button>
+            </div>
+
+            <!-- Visible Debug Console -->
+            <div id="debug-console" class="debug-console">
+                <div><strong>System Status:</strong> <span id="sys-status">Initializing...</span></div>
+                <div id="debug-logs"></div>
             </div>
 
             <div id="results" class="results-container hidden">
@@ -70,6 +88,24 @@
             <div id="error" class="error-message hidden"></div>
         </main>
     </div>
+
+    <!-- Sidebar for Board -->
+    <div id="board-sidebar" class="sidebar">
+        <button id="close-sidebar" class="close-btn">&times;</button>
+        <div class="sidebar-content">
+            <h2>Blunder Analysis</h2>
+            <div id="blunder-info" class="blunder-info">
+                Blunder <span id="blunder-index">1</span> / <span id="blunder-total">5</span>
+            </div>
+            <div id="myBoard" style="width: 100%"></div>
+            <div class="board-controls">
+                <button id="prev-blunder">Previous</button>
+                <div id="eval-diff" class="eval-diff"></div>
+                <button id="next-blunder">Next</button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 

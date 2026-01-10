@@ -605,7 +605,9 @@ function updateProgressUI() {
     if (btn && autoAnalysisEnabled) {
         const remaining = analysisQueue.length;
         const current = processedCount;
-        btn.textContent = `Analyzing: ${current}/${totalToAnalyze} (Queue: ${remaining})`;
+        // Use allGames.length to account for background fetching
+        const total = Math.max(totalToAnalyze, allGames.length);
+        btn.textContent = `Analyzing: ${current}/${total} (Queue: ${remaining})`;
     }
 }
 

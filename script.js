@@ -77,8 +77,8 @@ let currentBlunderGameId = null;
 let currentBlunderIndex = 0;
 let board = null;
 let analysisQueue = [];
-let isAnalyzing = false;
 let autoAnalysisEnabled = false;
+// isAnalyzing replaced by activeWorkers logic in processQueue
 
 // Initialize Board (Hidden initially)
 $(document).ready(function () {
@@ -479,7 +479,13 @@ async function analyzeGame(game, btnId, resId, isPlayerWhite, uniqueId) {
                         badge.textContent = `${blunders} Blunders`;
                         badge.classList.remove('hidden');
 
-                        if (blunders > 0) {
+                        // Style for clean games
+                        if (blunders === 0) {
+                            badge.style.color = '#7f8c8d'; // Grey for neutral
+                            badge.style.textDecoration = 'none';
+                            badge.style.cursor = 'default';
+                        } else {
+                            badge.style.color = '#e74c3c'; // Red for blunders
                             badge.style.cursor = 'pointer';
                             badge.style.textDecoration = 'underline';
                             badge.onclick = () => openSidebar(uId);

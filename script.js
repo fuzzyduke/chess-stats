@@ -71,6 +71,9 @@ let gameBlunders = {}; // Store blunders for each game: { gameId: [{fen, evalDif
 let currentBlunderGameId = null;
 let currentBlunderIndex = 0;
 let board = null;
+let analysisQueue = [];
+let isAnalyzing = false;
+let autoAnalysisEnabled = false;
 
 // Initialize Board (Hidden initially)
 $(document).ready(function () {
@@ -293,6 +296,7 @@ function displayData(profile, stats, countryName) {
     updateRating('bullet-rating', stats.chess_bullet);
     updateRating('daily-rating', stats.chess_daily);
     resultsContainer.classList.remove('hidden');
+    addAutoAnalyzeButton();
 }
 
 function displayGames(games, username) {
@@ -337,9 +341,35 @@ function displayGames(games, username) {
 
         gamesList.appendChild(card);
 
-        // Attach event listener directly to avoid string escaping hell
+        // Check if we have cached analysis for this game
+        storage.get(game.url).then(cachedData => {
+            if (cachedData) {
+                const badge = document.getElementById(`res-${uniqueId}`);
+                const btn = document.getElementById(`btn-${uniqueId}`);
+
+                gameBlunders[uniqueId] = cachedData;
+
+                if (btn) btn.style.display = 'none';
+                if (badge) {
+                    badge.textContent = `${cachedData.length} Blunders (Cached)`;
+                    badge.classList.remove('hidden');
+                    badge.style.cursor = 'pointer';
+                    badge.style.textDecoration = 'underline';
+                    badge.style.color = '#2ecc71';
+                    badge.onclick = () => {
+                        currentBlunderGameId = uniqueId;
+                        openSidebar(uniqueId);
+                    };
+                }
+            } else {
+                if (autoAnalysisEnabled) {
+                    addToAnalysisQueue(game, `btn-${uniqueId}`, `res-${uniqueId}`, isWhite, uniqueId);
+                }
+            }
+        });
+
         const btn = document.getElementById(`btn-${uniqueId}`);
-        btn.onclick = () => analyzeGame(game, `btn-${uniqueId}`, `res-${uniqueId}`, isWhite);
+        btn.onclick = () => analyzeGame(game, `btn-${uniqueId}`, `res-${uniqueId}`, isWhite, uniqueId);
     });
 }
 
@@ -349,162 +379,162 @@ function displayGames(games, username) {
 
 // --- Analysis Logic ---
 
-async function analyzeGame(game, btnId, resId, isPlayerWhite) {
+async function analyzeGame(game, btnId, resId, isPlayerWhite, uniqueId) {
+    // Safety check for storage hit
+    const cached = await storage.get(game.url);
+    if (cached) {
+        gameBlunders[uniqueId] = cached;
+        const badge = document.getElementById(resId);
+        const btn = document.getElementById(btnId);
+        if (btn) btn.style.display = 'none';
+        if (badge) {
+            badge.textContent = `${cached.length} Blunders (Cached)`;
+            badge.classList.remove('hidden');
+            badge.onclick = () => openSidebar(uniqueId);
+        }
+        return;
+    }
+
     const btn = document.getElementById(btnId);
     const badge = document.getElementById(resId);
 
-    // UI Update
-    btn.disabled = true;
-    btn.textContent = 'initializing...';
+    if (btn) {
+        btn.disabled = true;
+        if (!btn.textContent.includes('Analyzing')) btn.textContent = 'Queued...';
+    }
+
+    if (btn) btn.textContent = 'Initializing...';
     log(`Starting analysis for game ${btnId}...`);
 
-    try {
-        // Use local Stockfish file
-        log('Creating Stockfish Worker...');
-        const engine = new Worker('stockfish.js');
+    return new Promise((resolve, reject) => {
+        try {
+            log('Creating Stockfish Worker...');
+            const engine = new Worker('stockfish.js');
 
-        engine.onerror = (e) => {
-            log(`Worker Error: ${e.message}`);
-            log('Review browser console for details.');
-            btn.textContent = 'Error';
-        };
+            engine.onerror = (e) => {
+                log(`Worker Error: ${e.message}`);
+                log('Review browser console for details.');
+                if (btn) btn.textContent = 'Error';
+                reject(e);
+            };
 
-        btn.textContent = 'Parsing...';
+            if (btn) btn.textContent = 'Parsing...';
 
-        const chess = new Chess();
-        chess.load_pgn(game.pgn);
-        const history = chess.history({ verbose: true });
-        log(`PGN parsed. Moves: ${history.length}`);
+            const chess = new Chess();
+            chess.load_pgn(game.pgn);
+            const history = chess.history({ verbose: true });
+            log(`PGN parsed. Moves: ${history.length}`);
 
-        let blunders = 0;
-        let prevWhiteEval = 0; // Start at 0 cp
-        let lastBestEval = 0;
+            let blunders = 0;
+            let prevWhiteEval = 0;
+            let lastBestEval = 0;
+            let moveIndex = 0;
 
-        // Reset blunders for this game
-        gameBlunders[btnId] = [];
+            // Reset blunders
+            const uId = uniqueId || btnId;
+            gameBlunders[uId] = [];
 
-        let moveIndex = 0;
+            const analyzeNextMove = () => {
+                if (moveIndex >= history.length) {
+                    engine.terminate();
 
-        // Setup Engine Loop
+                    // Save to Storage
+                    storage.save(game.url, gameBlunders[uId])
+                        .then(() => log('Analysis saved to DB'))
+                        .catch(e => console.error('Save failed', e));
 
-        const analyzeNextMove = () => {
-            if (moveIndex >= history.length) {
-                // Done
-                engine.terminate();
+                    if (btn) btn.style.display = 'none';
+                    if (badge) {
+                        badge.textContent = `${blunders} Blunders`;
+                        badge.classList.remove('hidden');
 
-                btn.style.display = 'none';
-                badge.textContent = `${blunders} Blunders`;
-                badge.classList.remove('hidden');
-
-                if (blunders > 0) {
-                    badge.style.cursor = 'pointer';
-                    badge.style.textDecoration = 'underline';
-                    badge.onclick = () => openSidebar(btnId);
-                }
-                return;
-            }
-
-            // Reconstruct board to this move
-            const tempChess = new Chess();
-            for (let i = 0; i <= moveIndex; i++) {
-                tempChess.move(history[i]);
-            }
-            const fen = tempChess.fen();
-
-            btn.textContent = `Analyzing ${moveIndex + 1}/${history.length}`;
-            engine.postMessage(`position fen ${fen}`);
-            engine.postMessage('go depth 10');
-        };
-
-        let currentDepthScore = 0; // Holder for evaluations
-
-        engine.onmessage = (event) => {
-            const line = event.data;
-
-            // Parse Score
-            if (line.includes('score cp')) {
-                const match = line.match(/score cp (-?\d+)/);
-                if (match) currentDepthScore = parseInt(match[1]);
-            } else if (line.includes('score mate')) {
-                const match = line.match(/score mate (-?\d+)/);
-                if (match) {
-                    const mateIn = parseInt(match[1]);
-                    // High scores for mate
-                    currentDepthScore = (mateIn > 0) ? 2000 : -2000;
-                }
-            }
-
-            // Move Finished
-            if (line.includes('bestmove')) {
-                // Determine evaluation from White's perspective
-                // Stockfish gives score for "Side to Move"
-                // If moveIndex=0 (White moved), Side to Move is Black.
-                // So Score of 100 means Black is +100.
-
-                const sideToMove = (moveIndex % 2 === 0) ? 'b' : 'w'; // After move 0 (White), it's Black's turn
-
-                let whiteEval = (sideToMove === 'w') ? currentDepthScore : -currentDepthScore;
-
-                // Correction: Stockfish 10 sometimes reports score from white's perspective?
-                // Standard UCI is "side to move". Let's stick with that assumption.
-
-                // Blunder Check
-                // A blunder is when YOU moved, and your position got worse.
-                // If I am White:
-                // Compare "Eval Before My Move" vs "Eval After My Move"
-                // Actually, "Eval After My Move" is what we just calculated (`whiteEval`).
-                // "Eval Before My Move" was the `whiteEval` from the previous iteration.
-
-                if (moveIndex > 0) {
-                    const isWhiteMove = (moveIndex % 2 === 0);
-                    let isBlunder = false;
-                    let drop = 0;
-
-                    // Case: Player is White
-                    if (isPlayerWhite && isWhiteMove) {
-                        drop = lastBestEval - whiteEval;
-                        if (drop > 200) isBlunder = true;
-                    }
-
-                    // Case: Player is Black
-                    if (!isPlayerWhite && !isWhiteMove) {
-                        drop = whiteEval - lastBestEval;
-                        if (drop > 200) isBlunder = true;
-                    }
-
-                    if (isBlunder) {
-                        blunders++;
-                        // Capture FEN
-                        // Reconstruct FEN for this move index to save it
-                        const tempChess = new Chess();
-                        for (let i = 0; i <= moveIndex; i++) {
-                            tempChess.move(history[i]);
+                        if (blunders > 0) {
+                            badge.style.cursor = 'pointer';
+                            badge.style.textDecoration = 'underline';
+                            badge.onclick = () => openSidebar(uId);
                         }
-                        const blunderFen = tempChess.fen();
+                    }
+                    resolve();
+                    return;
+                }
 
-                        gameBlunders[btnId].push({
-                            fen: blunderFen,
-                            evalDiff: drop,
-                            moveIndex: moveIndex
-                        });
+                const tempChess = new Chess();
+                for (let i = 0; i <= moveIndex; i++) {
+                    tempChess.move(history[i]);
+                }
+                const fen = tempChess.fen();
+
+                if (btn) btn.textContent = `Analyzing ${moveIndex + 1}/${history.length}`;
+                engine.postMessage(`position fen ${fen}`);
+                engine.postMessage('go depth 10');
+            };
+
+            let currentDepthScore = 0;
+
+            engine.onmessage = (event) => {
+                const line = event.data;
+
+                if (line.includes('score cp')) {
+                    const match = line.match(/score cp (-?\d+)/);
+                    if (match) currentDepthScore = parseInt(match[1]);
+                } else if (line.includes('score mate')) {
+                    const match = line.match(/score mate (-?\d+)/);
+                    if (match) {
+                        const mateIn = parseInt(match[1]);
+                        currentDepthScore = (mateIn > 0) ? 2000 : -2000;
                     }
                 }
 
-                // Store for next comparison
-                lastBestEval = whiteEval;
+                if (line.includes('bestmove')) {
+                    const sideToMove = (moveIndex % 2 === 0) ? 'b' : 'w';
+                    let whiteEval = (sideToMove === 'w') ? currentDepthScore : -currentDepthScore;
 
-                moveIndex++;
-                analyzeNextMove();
-            }
-        };
+                    // Blunder check logic
+                    if (moveIndex > 0) {
+                        const isWhiteMove = (moveIndex % 2 === 0);
+                        let isBlunder = false;
+                        let drop = 0;
 
-        // Start
-        analyzeNextMove();
+                        if (isPlayerWhite && isWhiteMove) {
+                            drop = lastBestEval - whiteEval;
+                            if (drop > 200) isBlunder = true;
+                        }
 
-    } catch (e) {
-        console.error(e);
-        btn.textContent = 'Error';
-    }
+                        if (!isPlayerWhite && !isWhiteMove) {
+                            drop = whiteEval - lastBestEval;
+                            if (drop > 200) isBlunder = true;
+                        }
+
+                        if (isBlunder) {
+                            blunders++;
+                            const tempChess = new Chess();
+                            for (let i = 0; i <= moveIndex; i++) {
+                                tempChess.move(history[i]);
+                            }
+                            const blunderFen = tempChess.fen();
+
+                            gameBlunders[uId].push({
+                                fen: blunderFen,
+                                evalDiff: drop,
+                                moveIndex: moveIndex
+                            });
+                        }
+                    }
+
+                    lastBestEval = whiteEval;
+                    moveIndex++;
+                    setTimeout(analyzeNextMove, 0);
+                }
+            };
+
+            analyzeNextMove();
+
+        } catch (e) {
+            console.error(e);
+            if (btn) btn.textContent = 'Error';
+            reject(e);
+        }
+    }); // End Promise logic
 }
 
 
@@ -528,4 +558,54 @@ function updateRating(id, rating) {
         el.textContent = 'Unrated';
         el.className = 'rating unrated';
     }
+}
+
+// --- Queue Logic ---
+
+function addToAnalysisQueue(game, btnId, resId, isPlayerWhite, uniqueId) {
+    analysisQueue.push({ game, btnId, resId, isPlayerWhite, uniqueId });
+    processQueue();
+}
+
+async function processQueue() {
+    if (isAnalyzing || analysisQueue.length === 0) return;
+
+    isAnalyzing = true;
+    const task = analysisQueue.shift();
+
+    // Pass uniqueId
+    await analyzeGame(task.game, task.btnId, task.resId, task.isPlayerWhite, task.uniqueId);
+
+    isAnalyzing = false;
+    setTimeout(processQueue, 500);
+}
+
+function addAutoAnalyzeButton() {
+    if (document.getElementById('auto-analyze-btn')) return;
+
+    const container = document.getElementById('games-section');
+    const header = container.querySelector('h3');
+
+    const btn = document.createElement('button');
+    btn.id = 'auto-analyze-btn';
+    btn.textContent = 'Auto-Analyze All Loaded';
+    btn.style.marginLeft = '15px';
+    btn.style.fontSize = '0.7em';
+    btn.style.padding = '5px 10px';
+    btn.style.cursor = 'pointer';
+
+    btn.onclick = () => {
+        if (autoAnalysisEnabled) return;
+        autoAnalysisEnabled = true;
+        btn.disabled = true;
+        btn.textContent = 'Auto-Analysis Running...';
+
+        document.querySelectorAll('.analyze-btn').forEach(b => {
+            if (b.style.display !== 'none' && !b.disabled) {
+                b.click();
+            }
+        });
+    };
+
+    header.appendChild(btn);
 }

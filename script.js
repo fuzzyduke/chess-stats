@@ -185,26 +185,32 @@ async function fetchStats(username) {
 const BATCH_SIZE = 5;
 const GAMES_LIMIT = 5000;
 
+const fetchStatus = document.getElementById('fetch-status');
+
 async function fetchGameHistory(username) {
     try {
-        gamesList.innerHTML = '<div style="color:#888; text-align:center">Fetching archives list...</div>';
+        fetchStatus.textContent = 'Fetching archives list...';
+        gamesList.innerHTML = ''; // Clear previous list immediately
+
         const archivesRes = await fetch(`https://api.chess.com/pub/player/${username}/games/archives`);
         const archivesData = await archivesRes.json();
 
         if (!archivesData.archives || archivesData.archives.length === 0) {
             gamesList.innerHTML = '<div style="text-align:center">No games found.</div>';
+            fetchStatus.textContent = '';
             return;
         }
 
         const archiveUrls = archivesData.archives.reverse();
-        gamesList.innerHTML = `<div style="color:#888; text-align:center">Found ${archiveUrls.length} monthly archives. Loading...</div>`;
+        fetchStatus.textContent = `Found ${archiveUrls.length} monthly archives. Loading...`;
 
         allGames = [];
         let completed = 0;
+        let isFirstBatch = true;
 
         for (let i = 0; i < archiveUrls.length; i += BATCH_SIZE) {
             const batch = archiveUrls.slice(i, i + BATCH_SIZE);
-            gamesList.innerHTML = `<div style="color:#888; text-align:center">Loading history... (${completed}/${archiveUrls.length} months)</div>`;
+            fetchStatus.textContent = `Loading history... (${completed}/${archiveUrls.length} months)`;
 
             const batchPromises = batch.map(url => fetch(url).then(res => res.json()).catch(err => {
                 console.warn(`Failed to fetch ${url}`, err);
@@ -221,21 +227,32 @@ async function fetchGameHistory(username) {
             });
 
             completed += batch.length;
+
+            // Render immediately after first batch if we have games
+            if (isFirstBatch && allGames.length > 0) {
+                renderPage(1);
+                paginationControls.classList.remove('hidden');
+                isFirstBatch = false;
+            } else if (!isFirstBatch) {
+                // Just update controls for subsequent batches
+                updatePaginationControls();
+            }
+
             if (allGames.length > GAMES_LIMIT) break;
         }
 
-        gamesList.innerHTML = '';
-        if (allGames.length > 0) {
-            renderPage(1);
-            updatePaginationControls();
-            paginationControls.classList.remove('hidden');
-        } else {
+        fetchStatus.textContent = ''; // Clear status when done
+
+        if (allGames.length === 0) {
             gamesList.innerHTML = '<div style="text-align:center">No games found.</div>';
         }
 
     } catch (e) {
         console.error(e);
-        gamesList.innerHTML = '<div style="color:#ff6b6b; text-align:center">Failed to load games.</div>';
+        fetchStatus.textContent = 'Error loading games';
+        if (allGames.length === 0) {
+            gamesList.innerHTML = '<div style="color:#ff6b6b; text-align:center">Failed to load games.</div>';
+        }
     }
 }
 

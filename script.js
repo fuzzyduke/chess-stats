@@ -562,19 +562,46 @@ function updateRating(id, rating) {
 
 // --- Queue Logic ---
 
+let processedCount = 0;
+let totalToAnalyze = 0;
+
 function addToAnalysisQueue(game, btnId, resId, isPlayerWhite, uniqueId) {
-    analysisQueue.push({ game, btnId, resId, isPlayerWhite, uniqueId });
-    processQueue();
+    // Avoid duplicates
+    // Also check if already processed (though checks above usually handle this)
+    const exists = analysisQueue.find(t => t.uniqueId === uniqueId);
+    if (!exists) {
+        analysisQueue.push({ game, btnId, resId, isPlayerWhite, uniqueId });
+        updateProgressUI();
+        processQueue();
+    }
+}
+
+function updateProgressUI() {
+    const btn = document.getElementById('auto-analyze-btn');
+    if (btn && autoAnalysisEnabled) {
+        const remaining = analysisQueue.length;
+        const current = processedCount;
+        btn.textContent = `Analyzing: ${current}/${totalToAnalyze} (Queue: ${remaining})`;
+    }
 }
 
 async function processQueue() {
-    if (isAnalyzing || analysisQueue.length === 0) return;
+    if (isAnalyzing || analysisQueue.length === 0) {
+        if (analysisQueue.length === 0 && autoAnalysisEnabled) {
+            const btn = document.getElementById('auto-analyze-btn');
+            if (btn) btn.textContent = `Done! (${processedCount} games analyzed)`;
+        }
+        return;
+    }
 
     isAnalyzing = true;
     const task = analysisQueue.shift();
+    updateProgressUI();
 
-    // Pass uniqueId
     await analyzeGame(task.game, task.btnId, task.resId, task.isPlayerWhite, task.uniqueId);
+
+    processedCount++;
+    updateProgressUI();
 
     isAnalyzing = false;
     setTimeout(processQueue, 500);
@@ -594,17 +621,46 @@ function addAutoAnalyzeButton() {
     btn.style.padding = '5px 10px';
     btn.style.cursor = 'pointer';
 
-    btn.onclick = () => {
+    btn.onclick = async () => {
         if (autoAnalysisEnabled) return;
         autoAnalysisEnabled = true;
-        btn.disabled = true;
-        btn.textContent = 'Auto-Analysis Running...';
+        btn.style.cursor = 'wait';
 
-        document.querySelectorAll('.analyze-btn').forEach(b => {
-            if (b.style.display !== 'none' && !b.disabled) {
-                b.click();
+        const totalGames = allGames.length;
+        totalToAnalyze = totalGames;
+        processedCount = 0;
+        btn.textContent = `Queueing ${totalGames} games...`;
+
+        let queued = 0;
+        let skipped = 0;
+
+        // Iterate ALL games
+        for (let i = 0; i < allGames.length; i++) {
+            const game = allGames[i];
+
+            // Check persistence first
+            const cached = await storage.get(game.url);
+            if (cached) {
+                skipped++;
+                processedCount++;
+            } else {
+                // Determine ID and color
+                // If this game ID is not on the current page, we don't have a DOM ID.
+                // That's fine, analyzeGame supports headless.
+                // We pass uniqueId as game.url for consistency or just null?
+                // analyzeGame uses uniqueId as storage key.
+                // Wait, analyzeGame uses `btnId` or `uniqueId` as key?
+                // In headless, we MUST pass `uniqueId`.
+
+                const pWhite = game.white.username.toLowerCase() === currentUsername.toLowerCase();
+                addToAnalysisQueue(game, null, null, pWhite, game.url); // Use URL as unique ID for headless
+                queued++;
             }
-        });
+        }
+
+        totalToAnalyze = queued + skipped;
+        btn.textContent = `Starting... (Cached: ${skipped})`;
+        updateProgressUI();
     };
 
     header.appendChild(btn);

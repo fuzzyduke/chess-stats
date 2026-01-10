@@ -586,18 +586,13 @@ async function analyzeGame(game, btnId, resId, isPlayerWhite, uniqueId) {
                 }
             };
 
-            moveIndex++;
-            setTimeout(analyzeNextMove, 0);
+            analyzeNextMove();
+
+        } catch (e) {
+            console.error(e);
+            if (btn) btn.textContent = 'Error';
+            reject(e);
         }
-            };
-
-    analyzeNextMove();
-
-} catch (e) {
-    console.error(e);
-    if (btn) btn.textContent = 'Error';
-    reject(e);
-}
     }); // End Promise logic
 }
 

@@ -139,3 +139,83 @@ button:hover {
     color: var(--primary-color);
     text-decoration: underline;
 }
+
+/* Games History */
+.games-section {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+.games-section h3 {
+    color: #ccc;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #444;
+    padding-bottom: 0.5rem;
+}
+
+.games-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.game-card {
+    background-color: var(--card-bg);
+    padding: 12px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    border-left: 4px solid transparent;
+}
+
+.game-card.win {
+    border-left-color: #81b64c;
+}
+
+.game-card.loss {
+    border-left-color: #ff6b6b;
+}
+
+.game-card.draw {
+    border-left-color: #a7a7a7;
+}
+
+.game-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.opponent {
+    font-weight: bold;
+    color: #fff;
+}
+
+.result {
+    font-size: 0.8rem;
+    color: #aaa;
+}
+
+.game-date {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.game-meta {
+    text-align: right;
+}
+
+.game-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 0.8rem;
+    margin-top: 5px;
+    display: inline-block;
+}
+
+.game-link:hover {
+    text-decoration: underline;
+}

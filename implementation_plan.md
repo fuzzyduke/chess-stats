@@ -9,27 +9,26 @@ None. Uses public API.
 ## Proposed Changes
 
 ### `script.js`
-- Implement `fetchStats(username)` function.
-- Fetch profile data from `https://api.chess.com/pub/player/{username}`.
-- Fetch stats data from `https://api.chess.com/pub/player/{username}/stats`.
-- Handle errors (404 Not Found, Network errors).
-- Render data to the DOM.
+- **Fix:** Fetch full country name from the country URL provided in the profile.
+- **Feat:** Implement `fetchGameHistory(username)` function.
+    - Fetch list of archives: `https://api.chess.com/pub/player/{username}/games/archives`
+    - Fetch the *latest* monthly archive from the list.
+    - Display the last 10-20 games from that month.
+    - (Future) Add "Load More" to fetch previous months.
 
 ### `index.html`
-- Update `#results` container to have structured slots for:
-    - Avatar & Username
-    - Country & Status
-    - Ratings (Rapid, Blitz, Bullet, Daily)
+- Add a `#games-history` section below the stats grid.
+- Add a "Recent Games" header.
+- Create a list/table structure for games (White vs Black, Result, Date).
 
 ### `styles.css`
-- Add styles for the profile card.
-- Add grid layout for stats.
-- Add loading state styles.
+- Style the games list (cards or table).
+- Win/Loss color coding (Green/Red).
 
 ## Verification Plan
 ### Manual Verification
-1. Run `npm run dev`.
-2. Enter valid username (e.g., 'hikaru', 'magnuscarlsen').
-3. Verify profile info and ratings appear.
-4. Enter invalid username.
-5. Verify error message appears.
+1. Search for 'hikaru'.
+2. Verify Country shows "United States" (or similar) instead of "US".
+3. Verify "Recent Games" section appears.
+4. Check that recent games are listed with correct result colors.
+

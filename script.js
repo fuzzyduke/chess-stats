@@ -11,6 +11,7 @@ document.getElementById('search-btn').addEventListener('click', () => {
 
 const resultsContainer = document.getElementById('results');
 const errorDiv = document.getElementById('error');
+const gamesList = document.getElementById('games-list');
 
 async function fetchStats(username) {
     try {
@@ -23,21 +24,61 @@ async function fetchStats(username) {
         const statsRes = await fetch(`https://api.chess.com/pub/player/${username}/stats`);
         const statsData = await statsRes.json();
 
-        displayData(profileData, statsData);
+        // Fetch Country Name (if url exists)
+        let countryName = 'Unknown';
+        if (profileData.country) {
+            try {
+                const countryRes = await fetch(profileData.country);
+                const countryData = await countryRes.json();
+                countryName = countryData.name || 'Unknown';
+            } catch (e) {
+                console.error('Failed to fetch country', e);
+            }
+        }
+
+        // Fetch Game History
+        fetchGameHistory(username);
+
+        displayData(profileData, statsData, countryName);
     } catch (err) {
         showError(err.message);
     }
 }
 
-function displayData(profile, stats) {
+async function fetchGameHistory(username) {
+    try {
+        gamesList.innerHTML = '<div style="color:#888; text-align:center">Loading history...</div>';
+
+        // Get Archives
+        const archivesRes = await fetch(`https://api.chess.com/pub/player/${username}/games/archives`);
+        const archivesData = await archivesRes.json();
+
+        if (!archivesData.archives || archivesData.archives.length === 0) {
+            gamesList.innerHTML = '<div style="text-align:center">No games found.</div>';
+            return;
+        }
+
+        // Get Latest Monthly Archive
+        const latestArchiveUrl = archivesData.archives[archivesData.archives.length - 1];
+        const gamesRes = await fetch(latestArchiveUrl);
+        const gamesData = await gamesRes.json();
+
+        // Display last 10 games (reversed)
+        const recentGames = gamesData.games.slice(-10).reverse();
+        displayGames(recentGames, username);
+
+    } catch (e) {
+        console.error(e);
+        gamesList.innerHTML = '<div style="color:#ff6b6b; text-align:center">Failed to load games.</div>';
+    }
+}
+
+function displayData(profile, stats, countryName) {
     // Profile
     document.getElementById('avatar').src = profile.avatar || 'https://www.chess.com/bundles/web/images/user-image.svg';
     document.getElementById('player-name').textContent = profile.username;
 
-    // Country logic - fetch country name if needed, but for now just use the code url or simple text
-    // Chess.com returns a URL like https://api.chess.com/pub/country/US
-    const countryCode = profile.country ? profile.country.split('/').pop() : 'Unknown';
-    document.getElementById('player-location').textContent = countryCode;
+    document.getElementById('player-location').textContent = countryName;
 
     document.getElementById('profile-link').href = profile.url;
 
@@ -48,6 +89,37 @@ function displayData(profile, stats) {
     updateRating('daily-rating', stats.chess_daily);
 
     resultsContainer.classList.remove('hidden');
+}
+
+function displayGames(games, username) {
+    gamesList.innerHTML = '';
+
+    games.forEach(game => {
+        const isWhite = game.white.username.toLowerCase() === username.toLowerCase();
+        const player = isWhite ? game.white : game.black;
+        const opponent = isWhite ? game.black : game.white;
+        const result = player.result;
+
+        let resultClass = 'draw';
+        if (result === 'win') resultClass = 'win';
+        else if (['checkmated', 'resigned', 'timeout', 'abandoned'].includes(result)) resultClass = 'loss';
+
+        const date = new Date(game.end_time * 1000).toLocaleDateString();
+
+        const card = document.createElement('div');
+        card.className = `game-card ${resultClass}`;
+        card.innerHTML = `
+            <div class="game-info">
+                <span class="opponent">vs ${opponent.username} (${opponent.rating})</span>
+                <span class="result">${result} as ${isWhite ? 'White' : 'Black'}</span>
+            </div>
+            <div class="game-meta">
+                <div class="game-date">${date}</div>
+                <a href="${game.url}" target="_blank" class="game-link">View Game</a>
+            </div>
+        `;
+        gamesList.appendChild(card);
+    });
 }
 
 function updateRating(id, data) {

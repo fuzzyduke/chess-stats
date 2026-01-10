@@ -6,32 +6,31 @@
 
 ## Current State
 ### What's Working ✅
-- Basic project structure (index.html, styles.css, script.js)
-- Workflows imported
-- **API Integration**: Fetches profile and stats from Chess.com
-- **UI**: Displays avatar, username, country, and ratings
+- **API Integration**: Fetches profile, stats, and *Game History*
+- **UI**: Display profile, ratings, and list of last 10 games
+- **Polish**: Country name now displays correctly (e.g., "United States")
+- **Visuals**: Win/Loss/Draw color coding for games
 
 ### What's Not Working ⚠️
-- Country display is just the code (e.g., "US"), not the full name.
+- None known.
 
 ### In Progress 🔄
-- Manual verification state.
+- Verification phase.
 
 ## Recent Changes (Last 7 Days)
 ### 2026-01-10 - Gemini
-- Initialized project scaffolding
-- Added AI workflows
-- Created README and RUNBOOK
-- **Implemented API Logic**: Added `fetchStats` and DOM manipulation.
-- **Styled UI**: Added CSS for dark mode card layout.
+- **Feat**: Added Game History section (last 10 games).
+- **Fix**: Resolved Country Code to full Country Name.
+- **Style**: Added results color coding (Green/Red/Grey).
 
 ## Known Issues
-- Country display is raw code.
+- None yet.
 
 ## Next Steps (Priority Order)
-1. [ ] Improve Country display (fetch country name from API URL)
-2. [ ] Add more stats (Best rating, win/loss record)
-3. [ ] Add "History" feature to see previous searches
+1. [ ] Add pagination for games
+2. [ ] Add "Search History"
+3. [ ] Add charts for rating progress
+
 
 ## Questions for User
 - Should we use a specific design system or keep it custom CSS?

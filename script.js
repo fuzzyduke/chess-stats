@@ -391,31 +391,44 @@ function displayGames(games, username) {
 // --- Analysis Logic ---
 
 async function analyzeGame(game, btnId, resId, isPlayerWhite, uniqueId) {
+    // 1. Try to find visible DOM elements via Data Attribute if no direct ID provided
+    let btn = btnId ? document.getElementById(btnId) : null;
+    let badge = resId ? document.getElementById(resId) : null;
+
+    if (!btn && uniqueId) {
+        btn = document.querySelector(`button[data-game-url="${uniqueId}"]`);
+        if (btn) {
+            const badgeId = btn.id.replace('btn-', 'res-');
+            badge = document.getElementById(badgeId);
+        }
+    }
+
     // Safety check for storage hit
     const cached = await storage.get(game.url);
     if (cached) {
         gameBlunders[uniqueId] = cached;
-        const badge = document.getElementById(resId);
-        const btn = document.getElementById(btnId);
-        if (btn) btn.style.display = 'none';
-        if (badge) {
-            badge.textContent = `${cached.length} Blunders (Cached)`;
-            badge.classList.remove('hidden');
-            badge.onclick = () => openSidebar(uniqueId);
+
+        if (btn) {
+            btn.style.display = 'none';
+            if (badge) {
+                badge.textContent = `${cached.length} Blunders (Cached)`;
+                badge.classList.remove('hidden');
+                badge.style.cursor = 'pointer';
+                badge.style.textDecoration = 'underline';
+                badge.style.color = '#2ecc71';
+                badge.onclick = () => openSidebar(uniqueId);
+            }
         }
         return;
     }
 
-    const btn = document.getElementById(btnId);
-    const badge = document.getElementById(resId);
-
     if (btn) {
         btn.disabled = true;
         if (!btn.textContent.includes('Analyzing')) btn.textContent = 'Queued...';
+        btn.textContent = 'Initializing...';
     }
 
-    if (btn) btn.textContent = 'Initializing...';
-    log(`Starting analysis for game ${btnId}...`);
+    log(`Starting analysis for game ${uniqueId || btnId}...`);
 
     return new Promise((resolve, reject) => {
         try {

@@ -615,7 +615,13 @@ async function processQueue() {
     if (isAnalyzing || analysisQueue.length === 0) {
         if (analysisQueue.length === 0 && autoAnalysisEnabled) {
             const btn = document.getElementById('auto-analyze-btn');
-            if (btn) btn.textContent = `Done! (${processedCount} games analyzed)`;
+            // Use allGames.length for total
+            const total = Math.max(totalToAnalyze, allGames.length);
+            if (btn && processedCount >= total && document.getElementById('fetch-status').textContent === '') {
+                btn.textContent = `Done! (${processedCount} games analyzed)`;
+            } else if (btn) {
+                btn.textContent = `Waiting for more games... (${processedCount}/${total})`;
+            }
         }
         return;
     }
@@ -624,13 +630,26 @@ async function processQueue() {
     const task = analysisQueue.shift();
     updateProgressUI();
 
-    await analyzeGame(task.game, task.btnId, task.resId, task.isPlayerWhite, task.uniqueId);
-
-    processedCount++;
-    updateProgressUI();
-
-    isAnalyzing = false;
-    setTimeout(processQueue, 500);
+    try {
+        // Run analysis with a 60s timeout to prevent hangs
+        await Promise.race([
+            analyzeGame(task.game, task.btnId, task.resId, task.isPlayerWhite, task.uniqueId),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Analysis Timeout")), 60000))
+        ]);
+        processedCount++;
+    } catch (e) {
+        console.error("Queue processing error for game:", task.uniqueId, e);
+        if (task.btnId) {
+            const btn = document.getElementById(task.btnId);
+            if (btn) btn.textContent = 'Failed';
+        }
+        processedCount++;
+    } finally {
+        updateProgressUI();
+        isAnalyzing = false;
+        // Faster iteration
+        setTimeout(processQueue, 100);
+    }
 }
 
 function addAutoAnalyzeButton() {

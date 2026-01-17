@@ -14,5 +14,10 @@
   "license": "MIT",
   "devDependencies": {
     "http-server": "^14.1.1"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.90.1",
+    "fs": "^0.0.1-security",
+    "pg": "^8.16.3"
   }
 }

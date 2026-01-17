@@ -68,6 +68,18 @@
                     </div>
                 </div>
 
+                <!-- Training Mode Section -->
+                <div id="training-section" class="training-section hidden">
+                    <div class="training-card">
+                        <div class="training-icon">🥋</div>
+                        <div class="training-content">
+                            <h3>Training Dojo Available</h3>
+                            <p>We found <strong id="training-blunder-count">0</strong> blunders in your history.</p>
+                            <button id="start-training-btn" class="primary-btn">Start Training Mode</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="games-section" class="games-section">
                     <h3>Recent Games <span id="fetch-status"
                             style="font-size:0.6em; color:#666; font-weight:normal; margin-left:10px"></span></h3>
@@ -96,6 +108,7 @@
         <div class="sidebar-content">
             <h2>Blunder Analysis</h2>
             <div id="blunder-info" class="blunder-info">
+                <div id="blunder-turn-indicator" style="font-weight:bold; margin-bottom:5px; font-size:1.2em;"></div>
                 Blunder <span id="blunder-index">1</span> / <span id="blunder-total">5</span>
             </div>
             <div id="myBoard" style="width: 100%"></div>
@@ -103,6 +116,11 @@
                 <button id="prev-blunder">Previous</button>
                 <div id="eval-diff" class="eval-diff"></div>
                 <button id="next-blunder">Next</button>
+            </div>
+            <div style="text-align: center; margin-top: 15px;">
+                <a id="blunder-game-link" href="#" target="_blank"
+                    style="color: #7fa650; text-decoration: none; font-size: 0.9em; display: none;">OPEN ON CHESS.COM
+                    ↗</a>
             </div>
         </div>
     </div>
@@ -133,8 +151,8 @@
         </div>
     </div>
 
-    <script src="storage.js"></script>
-    <script src="script.js"></script>
+    <script type="module" src="storage.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 
 </html>

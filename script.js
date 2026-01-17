@@ -1,3 +1,5 @@
+import { storage } from './storage.js';
+
 // Debug Logger
 function log(msg) {
     const logs = document.getElementById('debug-content');
@@ -126,8 +128,28 @@ function showBlunder(index) {
     $('#blunder-total').text(blunders.length);
     $('#eval-diff').text(`Loss: ${(b.evalDiff / 100).toFixed(2)}`);
 
-    // Set Board Position
+    // Determine turn from FEN (2nd field: w or b)
+    const turn = b.fen.split(' ')[1];
+    const isWhiteTurn = turn === 'w';
+
+    const turnText = isWhiteTurn ? "White to Play" : "Black to Play";
+    $('#blunder-turn-indicator').text(turnText);
+
+    // Color code the indicator
+    $('#blunder-turn-indicator').css('color', isWhiteTurn ? '#fff' : '#aaa');
+
+    // Set Board Position & Orientation
     board.position(b.fen);
+    board.orientation(isWhiteTurn ? 'white' : 'black');
+
+    // Update Game Link
+    const linkEl = $('#blunder-game-link');
+    if (b.url) {
+        linkEl.attr('href', b.url);
+        linkEl.show();
+    } else {
+        linkEl.hide();
+    }
 }
 
 function openSidebar(gameId) {
@@ -140,6 +162,7 @@ function openSidebar(gameId) {
     }
 
     // Reset to first blunder
+    currentBlunderIndex = 0;
     showBlunder(0);
 
     // Open Sidebar
@@ -149,12 +172,58 @@ function openSidebar(gameId) {
     setTimeout(() => board.resize(), 300);
 }
 
+function closeSidebar() {
+    $('#board-sidebar').removeClass('open');
+}
+
+function nextBlunder() {
+    const blunders = gameBlunders[currentBlunderGameId];
+    if (!blunders) return;
+
+    if (currentBlunderIndex < blunders.length - 1) {
+        showBlunder(currentBlunderIndex + 1);
+    }
+}
+
+function prevBlunder() {
+    if (currentBlunderIndex > 0) {
+        showBlunder(currentBlunderIndex - 1);
+    }
+}
+
+// Wire up event listeners
+$(document).ready(function () {
+    $('#close-sidebar').on('click', closeSidebar);
+    $('#next-blunder').on('click', nextBlunder);
+    $('#prev-blunder').on('click', prevBlunder);
+
+    // Keyboard navigation
+    $(document).on('keydown', function (e) {
+        if (!$('#board-sidebar').hasClass('open')) return;
+
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            prevBlunder();
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            nextBlunder();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            closeSidebar();
+        }
+    });
+});
+
 async function fetchStats(username) {
     allGames = [];
     currentPage = 1;
     currentUsername = username;
     paginationControls.classList.add('hidden');
     log(`Fetching stats for: ${username}`);
+
+    // Initialize storage for this user context
+    const storageType = storage.initForUser(username);
+    log(`Storage initialized: ${storageType}`);
 
     try {
         log('Fetching profile data...');
@@ -184,7 +253,12 @@ async function fetchStats(username) {
         }
 
         log('Fetching game history...');
+        log('Fetching game history...');
         fetchGameHistory(username);
+
+        // Check for server-side analysis (Worker)
+        checkServerAnalysis(username);
+
         displayData(profileData, statsData, countryName);
     } catch (err) {
         log(`ERROR: ${err.message}`);
@@ -285,6 +359,9 @@ function renderPage(page) {
 
     displayGames(gamesToDisplay, currentUsername);
     updatePaginationControls();
+
+    // Update badges with server data after rendering
+    checkServerAnalysis(currentUsername);
 }
 
 function updatePaginationControls() {
@@ -592,6 +669,139 @@ async function analyzeGame(game, btnId, resId, isPlayerWhite, uniqueId) {
             reject(e);
         }
     }); // End Promise logic
+}
+
+
+// --- Training Mode Logic ---
+
+async function checkServerAnalysis(username) {
+    const supabase = storage.getSupabaseClient();
+    if (!supabase) return;
+
+    try {
+        log('Checking server analysis status...');
+
+        // Fetch all blunders with game URLs (remove 1000 row limit)
+        const { data, error } = await supabase
+            .from('blunder_positions')
+            .select('game_url')
+            .ilike('username', username)
+            .range(0, 9999);  // Fetch up to 10,000 blunders (default is 1000)
+
+        if (error) throw error;
+
+        const count = data ? data.length : 0;
+        log(`Server Report: ${count} blunders found.`);
+
+        if (count > 0) {
+            // Update Training Dojo card
+            const section = document.getElementById('training-section');
+            const countEl = document.getElementById('training-blunder-count');
+            const btn = document.getElementById('start-training-btn');
+
+            countEl.textContent = count;
+            section.classList.remove('hidden');
+            btn.onclick = () => startTrainingMode(username);
+
+            // Count blunders per game
+            const gameCounts = {};
+            data.forEach(row => {
+                const url = row.game_url;
+                gameCounts[url] = (gameCounts[url] || 0) + 1;
+            });
+
+            // Update individual game badges
+            Object.keys(gameCounts).forEach(url => {
+                const btn = document.querySelector(`button[data-game-url="${url}"]`);
+                if (btn) {
+                    const blunders = gameCounts[url];
+                    const uniqueId = btn.id.replace('btn-', '');
+                    const badge = document.getElementById(`res-${uniqueId}`);
+
+                    if (badge) {
+                        btn.style.display = 'none';
+                        badge.textContent = `${blunders} Blunders (Server)`;
+                        badge.classList.remove('hidden');
+                        badge.style.color = '#e74c3c';
+                        badge.style.cursor = 'pointer';
+                        badge.style.textDecoration = 'underline';
+                        badge.onclick = async () => {
+                            await loadServerGameBlunders(username, url, uniqueId);
+                        };
+                    }
+                }
+            });
+        }
+
+    } catch (e) {
+        log(`Server Check Error: ${e.message}`);
+    }
+}
+
+async function loadServerGameBlunders(username, url, uniqueId) {
+    const supabase = storage.getSupabaseClient();
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+        .from('blunder_positions')
+        .select('*')
+        .ilike('username', username)
+        .eq('game_url', url)
+        .order('move_number', { ascending: true });
+
+    if (data && data.length > 0) {
+        gameBlunders[uniqueId] = data.map(b => ({
+            fen: b.pfenc,
+            evalDiff: Math.abs(b.eval_before - b.eval_after),
+            moveIndex: b.move_number,
+            type: b.position_type,
+            url: b.game_url
+        }));
+        openSidebar(uniqueId);
+    }
+}
+
+async function startTrainingMode(username) {
+    const supabase = storage.getSupabaseClient();
+    if (!supabase) return;
+
+    try {
+        const btn = document.getElementById('start-training-btn');
+        btn.textContent = 'Loading Dojo...';
+        btn.disabled = true;
+
+        // Fetch 100 recent blunders
+        const { data, error } = await supabase
+            .from('blunder_positions')
+            .select('*')
+            .eq('username', username)
+            .limit(100)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            // Transform to app format
+            const trainingId = 'training-session';
+            gameBlunders[trainingId] = data.map(b => ({
+                fen: b.pfenc,
+                evalDiff: b.eval_before - b.eval_after, // Approximation if fields vary
+                moveIndex: b.move_number,
+                type: b.position_type,
+                url: b.game_url
+            }));
+
+            // Hack: Use a special ID for training mode
+            openSidebar(trainingId);
+        }
+
+        btn.textContent = 'Start Training Mode';
+        btn.disabled = false;
+
+    } catch (e) {
+        log(`Training Load Error: ${e.message}`);
+        alert('Failed to load training data');
+    }
 }
 
 

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Last Game Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="wrap">
+    <h1>Last Game Viewer</h1>
+    <p class="sub">Fetch the most recent Chess.com game and show moves in a grid.</p>
+
+    <div class="card">
+      <label>Chess.com username</label>
+      <div class="row">
+        <input id="username" placeholder="eg0maniac" />
+        <button id="btnFetch">Fetch last game</button>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+
+    <div id="gameInfo" class="card hidden">
+      <h2 id="gameTitle"></h2>
+      <p id="gameMeta"></p>
+      <a id="gameLink" target="_blank">Open game</a>
+    </div>
+
+    <div id="movesCard" class="card hidden">
+      <h3>Moves</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>White</th>
+            <th>W Δ</th>
+            <th>Black</th>
+            <th>B Δ</th>
+          </tr>
+        </thead>
+        <tbody id="movesBody"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
